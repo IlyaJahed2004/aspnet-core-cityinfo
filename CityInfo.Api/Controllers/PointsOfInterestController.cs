@@ -1,5 +1,6 @@
 ﻿using CityInfo.Api.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CityInfo.Api.Controllers
@@ -129,5 +130,94 @@ namespace CityInfo.Api.Controllers
             // This is the standard response for a successful PUT request where no data needs to be returned.
             return NoContent();
         }
+
+
+
+        [HttpPatch("{PointOfInterestId}")]
+        public ActionResult PartiallyUpdatePointOfInterest(int cityId, int PointOfInterestId,
+             JsonPatchDocument<PointOfInterestForUpdateDto> patchDocument)
+        {
+            // 1. Check if the city exists
+            var city = CitiesDataStore.Current.Cities.FirstOrDefault(c => c.Id == cityId);
+            if (city == null)
+            {
+                return NotFound();
+            }
+
+            // 2. Get the actual entity from the store (database)
+            var pointOfInterestFromStore = city.PointsOfInterest
+                .FirstOrDefault(p => p.Id == PointOfInterestId);
+
+            if (pointOfInterestFromStore == null)
+            {
+                return NotFound();
+            }
+
+            // 3. Map the entity to a DTO
+            // Why? Because the patch document is structurally bound to the DTO type,
+            // and we apply changes to this DTO first, not directly to the entity.
+            var pointOfInterestToPatch = new PointOfInterestForUpdateDto()
+            {
+                Name = pointOfInterestFromStore.Name,
+                Description = pointOfInterestFromStore.Description
+            };
+
+            // 4. Apply the patch to the DTO
+            // The 'ApplyTo' method executes the operations (replace, remove, etc.) on the DTO.
+            // We pass 'ModelState' so any errors (e.g., invalid path) are added to it.
+            patchDocument.ApplyTo(pointOfInterestToPatch, ModelState);
+
+            // 5. Check if the patch document itself was valid (syntax errors, invalid paths)
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
+            // 6. Validate the DTO after changes
+            // Since 'ApplyTo' doesn't check Data Annotations (like [Required]),
+            // we must manually trigger validation on the patched object.
+            if (!TryValidateModel(pointOfInterestToPatch))
+            {
+                return BadRequest(ModelState);
+            }
+
+            // 7. Map the changes back to the entity
+            // Now that the DTO is updated and valid, we copy the values back to the actual data store.
+            pointOfInterestFromStore.Name = pointOfInterestToPatch.Name;
+            pointOfInterestFromStore.Description = pointOfInterestToPatch.Description;
+
+            // 8. Return 204 No Content (Standard for updates)
+            return NoContent();
+        }
+
+        [HttpDelete("{pointOfInterestId}")]
+        public ActionResult DeletePointOfInterest(int cityId, int pointOfInterestId)
+        {
+            // 1. Find the city by its ID
+            var city = CitiesDataStore.Current.Cities
+                .FirstOrDefault(p => p.Id == cityId);
+
+            if (city == null)
+            {
+                return NotFound();
+            }
+
+            // 2. Find the specific point of interest within that city
+            var aimedPointOfInterest = city.PointsOfInterest
+                .FirstOrDefault(x => x.Id == pointOfInterestId);
+
+            if (aimedPointOfInterest == null)
+            {
+                return NotFound();
+            }
+
+            // 3. Remove the point of interest from the list
+            city.PointsOfInterest.Remove(aimedPointOfInterest);
+
+            // 4. Return 204 No Content (Standard for successful deletion)
+            return NoContent();
+        }
+
+
     }
 }
