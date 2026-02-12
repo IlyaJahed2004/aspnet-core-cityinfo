@@ -1,39 +1,58 @@
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 
+
+// used for built-in ASP.NET Core logging
+builder.Logging.ClearProviders(); // Cleared default providers like Console, Debug
+builder.Logging.AddConsole();     // Added only Console logging back
+
+
+
+// Add controllers support and enable NewtonsoftJson (needed for Patch requests)
 builder.Services.AddControllers().AddNewtonsoftJson();
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+
+
+// Add support for standard problem details format (RFC 7807) for errors
+builder.Services.AddProblemDetails();
+
+
+
+
+// Add Swagger services to generate API documentation
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+
+// Configure the HTTP request pipeline (Middleware)
+
+// In non-development environments, use a global exception handler
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler();
+}
+
+
+
+// In development, enable Swagger UI for testing API endpoints
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 
-app.UseRouting();
+app.UseHttpsRedirection(); // Redirect HTTP requests to HTTPS
 
-app.UseAuthorization();
+app.UseRouting(); // Enable routing to match endpoints
 
+app.UseAuthorization(); // Enable authorization middleware
 
+app.MapControllers(); // Map attribute-routed controllers
 
-//app.MapControllers();
-
-app.MapControllers();
-
-
-//app.Run(async (context) =>
-//{
-//    await context.Response.WriteAsync("Hello World!");
-//});
-
-
-app.Run();
+app.Run(); // Start the application
