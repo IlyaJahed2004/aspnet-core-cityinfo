@@ -8,7 +8,8 @@ namespace CityInfo.Api
 
         // Singleton Pattern (Static Instance)
         // We use a static property so the entire application accesses the same instance of the list.
-        public static CitiesDataStore Current { get; } = new CitiesDataStore();
+
+        //public static CitiesDataStore Current { get; } = new CitiesDataStore();
 
         public CitiesDataStore()
         {
